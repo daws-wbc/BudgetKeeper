@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Budget Keeper</title>
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Budget">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-spacer"></div>
+    <h1>Budget Keeper</h1>
+    <button id="settingsBtn" class="icon-btn" aria-label="Settings">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M19.14 12.94a7.07 7.07 0 0 0 .05-.94 7.07 7.07 0 0 0-.05-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84a.48.48 0 0 0-.48.41l-.36 2.54a7.37 7.37 0 0 0-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.48.48 0 0 0 .12.61l2.03 1.58a7.2 7.2 0 0 0 0 1.88l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.04.7 1.62.94l.36 2.54c.05.24.26.41.48.41h3.84c.24 0 .44-.17.48-.41l.36-2.54a7.37 7.37 0 0 0 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.03-1.58ZM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2Z"/></svg>
+    </button>
+  </header>
+
+  <main>
+    <nav class="week-nav">
+      <button id="prevWeek" class="icon-btn" aria-label="Previous week">
+        <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <button id="weekLabel" class="week-label" aria-label="Jump to this week">
+        <span id="weekRange"></span>
+        <span id="weekHint" class="week-hint"></span>
+      </button>
+      <button id="nextWeek" class="icon-btn" aria-label="Next week">
+        <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+      </button>
+    </nav>
+
+    <section class="gauge-card">
+      <svg id="gauge" viewBox="0 0 300 190" role="img" aria-labelledby="gaugeTitle">
+        <title id="gaugeTitle">Budget remaining gauge</title>
+        <g id="gaugeZones"></g>
+        <g id="gaugeTicks"></g>
+        <text x="30" y="175" class="gauge-letter">E</text>
+        <text x="270" y="175" class="gauge-letter">F</text>
+        <g class="gauge-pump" transform="translate(136 98)">
+          <path d="M3 2h12v24H3z M5 5h8v7H5z" fill-rule="evenodd"/>
+          <path d="M15 9h3a2 2 0 0 1 2 2v10a1.5 1.5 0 0 0 3 0V9l-3-3" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        <g id="needle">
+          <polygon points="150,145 262,150 150,155" />
+        </g>
+        <circle cx="150" cy="150" r="13" class="gauge-hub"/>
+      </svg>
+      <div class="gauge-readout">
+        <div id="remainingAmount" class="remaining-amount"></div>
+        <div id="remainingLabel" class="remaining-label"></div>
+      </div>
+      <div class="stats">
+        <div class="stat"><span class="stat-label">Spent</span><span id="spentAmount" class="stat-value"></span></div>
+        <button id="budgetStat" class="stat stat-btn" type="button" aria-label="Edit this week's budget"><span id="budgetLabel" class="stat-label">Budget</span><span id="budgetAmount" class="stat-value"></span></button>
+        <div class="stat"><span class="stat-label">Used</span><span id="usedPct" class="stat-value"></span></div>
+      </div>
+    </section>
+
+    <section class="list-card">
+      <h2>Expenses this week</h2>
+      <ul id="expenseList" class="expense-list"></ul>
+      <p id="emptyState" class="empty-state">No expenses yet. Tap <strong>Add Expense</strong> to log one.</p>
+    </section>
+  </main>
+
+  <footer class="bottom-bar">
+    <button id="addBtn" class="primary-btn">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
+      Add Expense
+    </button>
+  </footer>
+
+  <!-- Add / edit expense sheet -->
+  <div id="expenseSheet" class="sheet-backdrop" hidden>
+    <form id="expenseForm" class="sheet" autocomplete="off" novalidate>
+      <div class="sheet-header">
+        <button type="button" class="text-btn" data-close>Cancel</button>
+        <h2 id="expenseSheetTitle">Add Expense</h2>
+        <button type="submit" class="text-btn strong">Save</button>
+      </div>
+
+      <label class="field">
+        <span>Category</span>
+        <input id="categoryInput" name="category" type="text" placeholder="e.g. Groceries" autocapitalize="words" autocorrect="off" spellcheck="false" enterkeyhint="next" required>
+        <ul id="suggestions" class="suggestions" hidden></ul>
+      </label>
+
+      <label class="field">
+        <span>Amount</span>
+        <div class="amount-wrap">
+          <span class="currency-symbol">$</span>
+          <input id="amountInput" name="amount" type="text" inputmode="decimal" placeholder="0.00" enterkeyhint="next" required>
+        </div>
+      </label>
+
+      <label class="field">
+        <span>Date</span>
+        <input id="dateInput" name="date" type="date" required>
+      </label>
+
+      <label class="field">
+        <span>Notes</span>
+        <textarea id="notesInput" name="notes" rows="3" placeholder="Optional"></textarea>
+      </label>
+
+      <p id="formError" class="form-error" hidden></p>
+
+      <button type="button" id="deleteBtn" class="danger-btn" hidden>Delete Expense</button>
+    </form>
+  </div>
+
+  <!-- This week's budget sheet -->
+  <div id="weekBudgetSheet" class="sheet-backdrop" hidden>
+    <form id="weekBudgetForm" class="sheet" autocomplete="off" novalidate>
+      <div class="sheet-header">
+        <button type="button" class="text-btn" data-close>Cancel</button>
+        <h2>Week Budget</h2>
+        <button type="submit" class="text-btn strong">Save</button>
+      </div>
+
+      <label class="field">
+        <span id="weekBudgetRange">Budget for this week</span>
+        <div class="amount-wrap">
+          <span class="currency-symbol">$</span>
+          <input id="weekBudgetInput" type="text" inputmode="decimal" placeholder="0.00" required>
+        </div>
+      </label>
+      <p class="hint field-hint">Only changes this week. To change the budget for this week and every week after it, use ⚙︎ Settings.</p>
+
+      <p id="weekBudgetError" class="form-error" hidden></p>
+
+      <button type="button" id="weekBudgetReset" class="secondary-btn reset-btn" hidden></button>
+    </form>
+  </div>
+
+  <!-- Settings sheet -->
+  <div id="settingsSheet" class="sheet-backdrop" hidden>
+    <form id="settingsForm" class="sheet" autocomplete="off" novalidate>
+      <div class="sheet-header">
+        <button type="button" class="text-btn" data-close>Cancel</button>
+        <h2>Settings</h2>
+        <button type="submit" class="text-btn strong">Save</button>
+      </div>
+
+      <label class="field">
+        <span>Weekly budget</span>
+        <div class="amount-wrap">
+          <span class="currency-symbol">$</span>
+          <input id="budgetInput" type="text" inputmode="decimal" placeholder="0.00" required>
+        </div>
+      </label>
+      <p class="hint field-hint">Applies to this week and every week after it. Past weeks keep the budget they had.</p>
+
+      <label class="field">
+        <span>Week starts on</span>
+        <select id="weekStartInput">
+          <option value="0">Sunday</option>
+          <option value="1">Monday</option>
+          <option value="2">Tuesday</option>
+          <option value="3">Wednesday</option>
+          <option value="4">Thursday</option>
+          <option value="5">Friday</option>
+          <option value="6">Saturday</option>
+        </select>
+      </label>
+
+      <p id="settingsError" class="form-error" hidden></p>
+
+      <div class="settings-section">
+        <h3>Backup</h3>
+        <p class="hint">Your data is stored only on this device. Export a backup now and then so you don't lose it.</p>
+        <div class="btn-row">
+          <button type="button" id="exportBtn" class="secondary-btn">Export Data</button>
+          <button type="button" id="importBtn" class="secondary-btn">Import Data</button>
+        </div>
+        <input id="importFile" type="file" accept="application/json,.json" hidden>
+      </div>
+    </form>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
