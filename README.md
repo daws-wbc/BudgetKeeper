@@ -12,6 +12,7 @@ No App Store and no Mac are needed. It runs full-screen from your home screen, w
 - Settings for the weekly budget amount and which weekday the week starts on
 - Budgets are saved per week: changing the budget in Settings applies to this week and later weeks only, so past weeks keep theirs. Tap **Budget** on the main screen to give just the week you're viewing a different amount.
 - Tap any expense to edit or delete it
+- 8-week report (chart icon, top left): spending vs budget by week, weeks on budget, and total saved or over. Tap a week to jump to it.
 - Export/import a JSON backup
 
 ## Put it on your iPhone

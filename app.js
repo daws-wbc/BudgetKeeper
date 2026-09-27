@@ -145,6 +145,18 @@ const els = {
   budgetLabel: $('budgetLabel'),
   budgetStat: $('budgetStat'),
 
+  reportBtn: $('reportBtn'),
+  reportSheet: $('reportSheet'),
+  rptOnBudget: $('rptOnBudget'),
+  rptSpent: $('rptSpent'),
+  rptBudget: $('rptBudget'),
+  rptNet: $('rptNet'),
+  rptNetLabel: $('rptNetLabel'),
+  chartWrap: $('chartWrap'),
+  chart: $('reportChart'),
+  chartTip: $('chartTip'),
+  reportList: $('reportList'),
+
   weekBudgetSheet: $('weekBudgetSheet'),
   weekBudgetForm: $('weekBudgetForm'),
   weekBudgetRange: $('weekBudgetRange'),
@@ -329,7 +341,7 @@ function closeSheet(sheet) {
   document.body.style.overflow = '';
 }
 
-const allSheets = [els.expenseSheet, els.settingsSheet, els.weekBudgetSheet];
+const allSheets = [els.expenseSheet, els.settingsSheet, els.weekBudgetSheet, els.reportSheet];
 
 for (const sheet of allSheets) {
   sheet.addEventListener('click', (e) => {
@@ -551,6 +563,205 @@ els.weekBudgetReset.addEventListener('click', () => {
 });
 
 els.budgetStat.addEventListener('click', openWeekBudget);
+
+// ---------- 8-week report ----------
+
+const REPORT_WEEKS = 8;
+const fmtAxis = new Intl.DateTimeFormat(undefined, { month: 'numeric', day: 'numeric' });
+const fmtWhole = new Intl.NumberFormat(undefined, { style: 'currency', currency: CURRENCY, maximumFractionDigits: 0 });
+
+function reportWeeks() {
+  // The current week plus the 7 before it, oldest first.
+  const current = weekStartFor(today(), state.settings.weekStartDay);
+  const weeks = [];
+  for (let i = REPORT_WEEKS - 1; i >= 0; i--) {
+    const start = addDays(current, -7 * i);
+    const spent = expensesInWeek(start).reduce((sum, x) => sum + x.amountCents, 0);
+    weeks.push({ start, spent, budget: budgetForWeek(start), isCurrent: i === 0 });
+  }
+  return weeks;
+}
+
+function niceStep(max, ticks) {
+  const raw = max / ticks;
+  const mag = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 2.5, 5, 10].find((m) => m * mag >= raw) * mag;
+  return step;
+}
+
+function svgEl(tag, attrs, parent) {
+  const el = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  if (parent) parent.appendChild(el);
+  return el;
+}
+
+function renderReport() {
+  const weeks = reportWeeks();
+  const budgeted = weeks.filter((w) => w.budget > 0);
+  const onBudget = budgeted.filter((w) => w.spent <= w.budget).length;
+  const totalSpent = weeks.reduce((s, w) => s + w.spent, 0);
+  const totalBudget = budgeted.reduce((s, w) => s + w.budget, 0);
+  const net = totalBudget - budgeted.reduce((s, w) => s + w.spent, 0);
+
+  els.rptOnBudget.textContent = budgeted.length ? `${onBudget} of ${budgeted.length}` : '—';
+  els.rptSpent.textContent = fmtWhole.format(totalSpent / 100);
+  els.rptBudget.textContent = totalBudget ? `of ${fmtWhole.format(totalBudget / 100)} budget` : 'no budget set';
+  els.rptNetLabel.textContent = net >= 0 ? 'Saved' : 'Over';
+  els.rptNet.textContent = totalBudget ? fmtWhole.format(Math.abs(net) / 100) : '—';
+
+  renderChart(weeks);
+
+  els.reportList.replaceChildren(
+    ...weeks.slice().reverse().map((w) => {
+      const li = document.createElement('li');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'report-row';
+      btn.addEventListener('click', () => {
+        viewWeekStart = w.start;
+        closeSheet(els.reportSheet);
+        render();
+      });
+
+      const week = document.createElement('span');
+      week.className = 'row-week';
+      week.textContent = `${fmtShort.format(w.start)} – ${fmtShort.format(addDays(w.start, 6))} `;
+      if (w.isCurrent) {
+        const small = document.createElement('small');
+        small.textContent = '· this week';
+        week.append(small);
+      }
+
+      const amounts = document.createElement('span');
+      amounts.className = 'row-amounts';
+      amounts.textContent = w.budget > 0
+        ? `${fmtMoney(w.spent)} of ${fmtMoney(w.budget)}`
+        : `${fmtMoney(w.spent)} spent · no budget`;
+
+      const diff = document.createElement('span');
+      diff.className = 'row-diff';
+      if (w.budget > 0) {
+        const over = w.spent > w.budget;
+        diff.classList.add(over ? 'over' : 'under');
+        diff.append(fmtMoney(Math.abs(w.budget - w.spent)));
+        const status = document.createElement('span');
+        status.className = 'status';
+        const icon = document.createElement('i');
+        icon.className = 'status-icon';
+        icon.textContent = over ? '▲' : '✓';
+        status.append(icon, over ? 'over' : w.isCurrent ? 'left' : 'under');
+        diff.append(status);
+      }
+
+      btn.append(week, amounts, diff);
+      li.append(btn);
+      return li;
+    })
+  );
+}
+
+function renderChart(weeks) {
+  const svg = els.chart;
+  svg.replaceChildren();
+  hideChartTip();
+
+  const W = els.chartWrap.clientWidth || 340;
+  const H = 220;
+  const pad = { top: 12, right: 4, bottom: 26, left: 44 };
+  const plotW = W - pad.left - pad.right;
+  const plotH = H - pad.top - pad.bottom;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+  const maxVal = Math.max(1, ...weeks.map((w) => Math.max(w.spent, w.budget))) / 100;
+  const step = niceStep(maxVal, 4);
+  const top = Math.ceil(maxVal / step) * step;
+  const y = (dollars) => pad.top + plotH - (dollars / top) * plotH;
+
+  // Hairline grid + y labels.
+  for (let v = 0; v <= top + 1e-9; v += step) {
+    svgEl('line', { x1: pad.left, x2: W - pad.right, y1: y(v), y2: y(v), class: 'chart-grid' }, svg);
+    const t = svgEl('text', { x: pad.left - 8, y: y(v) + 4, 'text-anchor': 'end', class: 'chart-axis-text' }, svg);
+    t.textContent = fmtWhole.format(v);
+  }
+
+  const slot = plotW / weeks.length;
+  const barW = Math.min(24, slot * 0.55);
+  const tickW = Math.min(barW + 12, slot * 0.85);
+  const baseY = y(0);
+
+  weeks.forEach((w, i) => {
+    const cx = pad.left + slot * i + slot / 2;
+    const g = svgEl('g', { class: 'chart-col' }, svg);
+
+    const spent = w.spent / 100;
+    const h = baseY - y(spent);
+    if (h > 0) {
+      // Rounded top, square at the baseline.
+      const r = Math.min(4, h, barW / 2);
+      const x0 = cx - barW / 2, x1 = cx + barW / 2, yt = baseY - h;
+      svgEl('path', {
+        d: `M${x0},${baseY} V${yt + r} Q${x0},${yt} ${x0 + r},${yt} H${x1 - r} Q${x1},${yt} ${x1},${yt + r} V${baseY} Z`,
+        class: w.budget > 0 && w.spent > w.budget ? 'chart-bar-over' : 'chart-bar-under',
+      }, g);
+    }
+    if (w.budget > 0) {
+      const by = y(w.budget / 100);
+      svgEl('line', { x1: cx - tickW / 2, x2: cx + tickW / 2, y1: by, y2: by, class: 'chart-budget' }, g);
+    }
+
+    const label = svgEl('text', {
+      x: cx, y: H - 8, 'text-anchor': 'middle',
+      class: 'chart-axis-text' + (w.isCurrent ? ' current' : ''),
+    }, svg);
+    label.textContent = fmtAxis.format(w.start);
+
+    // Hit target covers the whole slot, not just the bar.
+    const hit = svgEl('rect', { x: cx - slot / 2, y: pad.top, width: slot, height: plotH + pad.bottom, class: 'chart-hit' }, svg);
+    const show = () => showChartTip(w, cx, Math.min(y(Math.max(spent, w.budget / 100)), baseY), g, W);
+    hit.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') show(); });
+    hit.addEventListener('click', (e) => { e.stopPropagation(); show(); });
+  });
+}
+
+els.chart.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') hideChartTip(); });
+
+function showChartTip(w, cx, topY, col, W) {
+  const tip = els.chartTip;
+  const lines = [`<strong>${fmtShort.format(w.start)} – ${fmtShort.format(addDays(w.start, 6))}</strong>`,
+    `<div class="tip-row">Spent ${fmtMoney(w.spent)}</div>`];
+  if (w.budget > 0) {
+    const d = w.budget - w.spent;
+    lines.push(`<div class="tip-row">Budget ${fmtMoney(w.budget)}</div>`);
+    lines.push(`<div class="tip-row">${d >= 0 ? '✓' : '▲'} ${fmtMoney(Math.abs(d))} ${d >= 0 ? (w.isCurrent ? 'left' : 'under') : 'over'}</div>`);
+  }
+  tip.innerHTML = lines.join('');
+  tip.hidden = false;
+  // Keep the tip inside the chart horizontally, above the column.
+  const half = tip.offsetWidth / 2;
+  tip.style.left = `${Math.max(half, Math.min(W - half, cx))}px`;
+  tip.style.top = `${Math.max(0, topY - tip.offsetHeight - 8)}px`;
+  els.chart.classList.add('chart-dim');
+  els.chart.querySelectorAll('.chart-col').forEach((c) => c.classList.toggle('active', c === col));
+}
+
+function hideChartTip() {
+  els.chartTip.hidden = true;
+  els.chart.classList.remove('chart-dim');
+}
+
+els.reportSheet.addEventListener('click', (e) => {
+  if (!e.target.closest('.chart-hit')) hideChartTip();
+});
+
+els.reportBtn.addEventListener('click', () => {
+  openSheet(els.reportSheet);
+  renderReport(); // after opening, so the chart can measure its width
+});
+
+window.addEventListener('resize', () => {
+  if (!els.reportSheet.hidden) renderChart(reportWeeks());
+});
 
 // ---------- Backup ----------
 

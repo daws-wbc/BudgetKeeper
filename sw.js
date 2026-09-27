@@ -1,6 +1,6 @@
 // Offline support: serve the app shell from cache, refreshing it in the background
 // so updates show up on the next launch.
-const CACHE = 'budgetkeeper-v2';
+const CACHE = 'budgetkeeper-v3';
 const ASSETS = [
   './',
   'index.html',

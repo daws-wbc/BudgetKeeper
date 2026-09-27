@@ -16,7 +16,9 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="topbar-spacer"></div>
+    <button id="reportBtn" class="icon-btn" aria-label="8-week report">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M4 20h16a1 1 0 1 1 0 2H4a2 2 0 0 1-2-2V4a1 1 0 1 1 2 0v16Zm3-3a1 1 0 0 1-1-1v-4a1 1 0 1 1 2 0v4a1 1 0 0 1-1 1Zm4.5 0a1 1 0 0 1-1-1V8a1 1 0 1 1 2 0v8a1 1 0 0 1-1 1Zm4.5 0a1 1 0 0 1-1-1v-6a1 1 0 1 1 2 0v6a1 1 0 0 1-1 1Zm4.5 0a1 1 0 0 1-1-1V5a1 1 0 1 1 2 0v11a1 1 0 0 1-1 1Z"/></svg>
+    </button>
     <h1>Budget Keeper</h1>
     <button id="settingsBtn" class="icon-btn" aria-label="Settings">
       <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M19.14 12.94a7.07 7.07 0 0 0 .05-.94 7.07 7.07 0 0 0-.05-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84a.48.48 0 0 0-.48.41l-.36 2.54a7.37 7.37 0 0 0-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.48.48 0 0 0 .12.61l2.03 1.58a7.2 7.2 0 0 0 0 1.88l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.04.7 1.62.94l.36 2.54c.05.24.26.41.48.41h3.84c.24 0 .44-.17.48-.41l.36-2.54a7.37 7.37 0 0 0 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.03-1.58ZM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2Z"/></svg>
@@ -115,6 +117,38 @@
 
       <button type="button" id="deleteBtn" class="danger-btn" hidden>Delete Expense</button>
     </form>
+  </div>
+
+  <!-- 8-week report sheet -->
+  <div id="reportSheet" class="sheet-backdrop" hidden>
+    <div class="sheet report-sheet" role="dialog" aria-labelledby="reportTitle">
+      <div class="sheet-header">
+        <div></div>
+        <h2 id="reportTitle">Last 8 Weeks</h2>
+        <button type="button" class="text-btn strong" data-close>Done</button>
+      </div>
+
+      <div class="report-tiles">
+        <div class="tile"><span class="tile-label">On budget</span><span id="rptOnBudget" class="tile-value"></span></div>
+        <div class="tile"><span class="tile-label">Spent</span><span id="rptSpent" class="tile-value"></span><span id="rptBudget" class="tile-sub"></span></div>
+        <div class="tile"><span id="rptNetLabel" class="tile-label">Net</span><span id="rptNet" class="tile-value"></span></div>
+      </div>
+
+      <div class="chart-block">
+        <div class="chart-legend" aria-hidden="true">
+          <span><i class="key key-under"></i>Under budget</span>
+          <span><i class="key key-over"></i>Over budget</span>
+          <span><i class="key key-budget"></i>Budget</span>
+        </div>
+        <div id="chartWrap" class="chart-wrap">
+          <svg id="reportChart" role="img" aria-label="Spending versus budget for the last 8 weeks"></svg>
+          <div id="chartTip" class="chart-tip" hidden></div>
+        </div>
+      </div>
+
+      <h3 class="report-subhead">By week</h3>
+      <ul id="reportList" class="report-list"></ul>
+    </div>
   </div>
 
   <!-- This week's budget sheet -->
