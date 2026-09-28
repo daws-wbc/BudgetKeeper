@@ -165,8 +165,16 @@ main {
 
 /* ---------- Expense list ---------- */
 .list-card { margin-top: 16px; padding: 14px 0 6px; }
+.list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 16px 8px;
+}
 .list-card h2 {
-  margin: 0 16px 6px;
+  margin: 0;
+  white-space: nowrap;
   font-size: 13px;
   font-weight: 600;
   text-transform: uppercase;
@@ -195,6 +203,50 @@ main {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.segmented {
+  display: inline-grid;
+  grid-auto-flow: column;
+  padding: 2px;
+  border-radius: 9px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.segmented button {
+  padding: 5px 10px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.segmented button[aria-selected="true"] {
+  background: var(--card);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+}
+.cat-item .expense-cat { display: flex; align-items: center; gap: 6px; }
+.cat-item .chev {
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+.cat-item.open .chev { transform: rotate(90deg); }
+.cat-name { overflow: hidden; text-overflow: ellipsis; }
+.share-bar {
+  grid-column: 1 / -1;
+  height: 4px;
+  margin-top: 4px;
+  border-radius: 2px;
+  background: var(--gauge-track);
+  overflow: hidden;
+}
+.share-bar span { display: block; height: 100%; border-radius: 2px; background: var(--accent); }
+.sub-list { background: var(--bg); }
+.sub-list .expense-item { padding-left: 36px; }
+.sub-list li:first-child .expense-item { border-top: 1px solid var(--border); }
+.sub-list .expense-cat, .sub-list .expense-amt { font-weight: 500; font-size: 15px; }
 .empty-state { margin: 8px 16px 14px; color: var(--muted); font-size: 15px; }
 
 /* ---------- Bottom bar ---------- */

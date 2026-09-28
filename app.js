@@ -124,6 +124,9 @@ const centsToInput = (cents) => (cents / 100).toFixed(2);
 // ---------- View state ----------
 
 let viewWeekStart = weekStartFor(today(), state.settings.weekStartDay);
+// Expense list mode: 'category' (summed by category, default) or 'detail' (every expense).
+let listMode = 'category';
+const expandedCats = new Set();
 
 // ---------- DOM ----------
 
@@ -165,6 +168,8 @@ const els = {
   weekBudgetReset: $('weekBudgetReset'),
   usedPct: $('usedPct'),
   list: $('expenseList'),
+  viewCategory: $('viewCategory'),
+  viewDetail: $('viewDetail'),
   empty: $('emptyState'),
   addBtn: $('addBtn'),
   settingsBtn: $('settingsBtn'),
@@ -303,31 +308,116 @@ function render() {
     setNeedle(left / budget);
   }
 
-  els.list.replaceChildren(
-    ...items.map((x) => {
-      const li = document.createElement('li');
-      const btn = document.createElement('button');
-      btn.className = 'expense-item';
-      btn.type = 'button';
-      btn.addEventListener('click', () => openExpenseSheet(x));
-
-      const cat = document.createElement('span');
-      cat.className = 'expense-cat';
-      cat.textContent = x.category;
-      const amt = document.createElement('span');
-      amt.className = 'expense-amt';
-      amt.textContent = fmtMoney(x.amountCents);
-      const meta = document.createElement('span');
-      meta.className = 'expense-meta';
-      meta.textContent = fmtDay.format(parseISODate(x.date)) + (x.notes ? ` · ${x.notes}` : '');
-
-      btn.append(cat, amt, meta);
-      li.append(btn);
-      return li;
-    })
-  );
+  renderExpenseList(items, spent);
   els.empty.hidden = items.length > 0;
 }
+
+// ---------- Expense list ----------
+
+function expenseRow(x) {
+  const li = document.createElement('li');
+  const btn = document.createElement('button');
+  btn.className = 'expense-item';
+  btn.type = 'button';
+  btn.addEventListener('click', () => openExpenseSheet(x));
+
+  const cat = document.createElement('span');
+  cat.className = 'expense-cat';
+  cat.textContent = x.category;
+  const amt = document.createElement('span');
+  amt.className = 'expense-amt';
+  amt.textContent = fmtMoney(x.amountCents);
+  const meta = document.createElement('span');
+  meta.className = 'expense-meta';
+  meta.textContent = fmtDay.format(parseISODate(x.date)) + (x.notes ? ` · ${x.notes}` : '');
+
+  btn.append(cat, amt, meta);
+  li.append(btn);
+  return li;
+}
+
+function groupByCategory(items) {
+  const map = new Map();
+  for (const x of items) {
+    const key = x.category.toLowerCase();
+    const g = map.get(key) || { key, name: x.category, cents: 0, items: [] };
+    g.cents += x.amountCents;
+    g.items.push(x);
+    map.set(key, g);
+  }
+  return [...map.values()].sort((a, b) => b.cents - a.cents || a.name.localeCompare(b.name));
+}
+
+function categoryRow(g, spent) {
+  const li = document.createElement('li');
+  const open = expandedCats.has(g.key);
+  const btn = document.createElement('button');
+  btn.className = 'expense-item cat-item' + (open ? ' open' : '');
+  btn.type = 'button';
+  btn.setAttribute('aria-expanded', String(open));
+  btn.addEventListener('click', () => {
+    if (expandedCats.has(g.key)) expandedCats.delete(g.key);
+    else expandedCats.add(g.key);
+    render();
+  });
+
+  const share = spent > 0 ? g.cents / spent : 0;
+  const cat = document.createElement('span');
+  cat.className = 'expense-cat';
+  const chev = document.createElementNS(SVG_NS, 'svg');
+  chev.setAttribute('class', 'chev');
+  chev.setAttribute('viewBox', '0 0 24 24');
+  chev.setAttribute('width', '14');
+  chev.setAttribute('height', '14');
+  chev.setAttribute('aria-hidden', 'true');
+  chev.innerHTML = '<path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>';
+  const name = document.createElement('span');
+  name.className = 'cat-name';
+  name.textContent = g.name;
+  cat.append(chev, name);
+  const amt = document.createElement('span');
+  amt.className = 'expense-amt';
+  amt.textContent = fmtMoney(g.cents);
+  const meta = document.createElement('span');
+  meta.className = 'expense-meta';
+  const n = g.items.length;
+  meta.textContent = `${n} ${n === 1 ? 'expense' : 'expenses'} · ${Math.round(share * 100)}% of spending`;
+  const bar = document.createElement('span');
+  bar.className = 'share-bar';
+  const fill = document.createElement('span');
+  fill.style.width = `${Math.max(share * 100, 1)}%`;
+  bar.append(fill);
+
+  btn.append(cat, amt, meta, bar);
+  li.append(btn);
+
+  if (open) {
+    const sub = document.createElement('ul');
+    sub.className = 'expense-list sub-list';
+    sub.append(...g.items.map(expenseRow));
+    li.append(sub);
+  }
+  return li;
+}
+
+function renderExpenseList(items, spent) {
+  els.viewCategory.setAttribute('aria-selected', String(listMode === 'category'));
+  els.viewDetail.setAttribute('aria-selected', String(listMode === 'detail'));
+  els.list.replaceChildren(
+    ...(listMode === 'category'
+      ? groupByCategory(items).map((g) => categoryRow(g, spent))
+      : items.map(expenseRow))
+  );
+}
+
+function setListMode(mode) {
+  if (listMode === mode) return;
+  listMode = mode;
+  render();
+}
+
+els.viewCategory.addEventListener('click', () => setListMode('category'));
+els.viewDetail.addEventListener('click', () => setListMode('detail'));
 
 // ---------- Sheets ----------
 

@@ -67,7 +67,13 @@
     </section>
 
     <section class="list-card">
-      <h2>Expenses this week</h2>
+      <div class="list-header">
+        <h2>Expenses this week</h2>
+        <div class="segmented" role="tablist" aria-label="Expense view">
+          <button type="button" id="viewCategory" role="tab" aria-selected="true">By category</button>
+          <button type="button" id="viewDetail" role="tab" aria-selected="false">All</button>
+        </div>
+      </div>
       <ul id="expenseList" class="expense-list"></ul>
       <p id="emptyState" class="empty-state">No expenses yet. Tap <strong>Add Expense</strong> to log one.</p>
     </section>
